@@ -1,14 +1,16 @@
-#include <iostream>
-#include "cache_2q.hpp"
+#include <list>
+#include "ideal_cache.hpp"
 
+int get_page(int key) {
+    return key;
+}
 
-struct page_t {
-    int id;
-};
-
-int main() {
-    int b = 3;
-    fifo_t<int> a(b);
-    std::cout << a.full() << std::endl;
+int main()
+{
+    std::list<int> req = {7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2};
+    size_t cache_sz = 3;
+    cache_t<int> a(req, cache_sz);
+    std::cout << a.hit_cnt(get_page) << std::endl;
+    
     return 0;
 }
