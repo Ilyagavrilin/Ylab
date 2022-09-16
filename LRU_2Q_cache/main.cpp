@@ -7,8 +7,11 @@ int get_page(int key) {
 
 int main()
 {
-    std::list<int> req = {7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2};
-    size_t cache_sz = 3;
+    std::list<int> req;
+    for (int i = 0; i < 100; i++) {
+        req.push_back(std::rand() % 100);
+    }
+    size_t cache_sz = 5;
     cache_t<int> a(req, cache_sz);
     std::cout << a.hit_cnt(get_page) << std::endl;
     

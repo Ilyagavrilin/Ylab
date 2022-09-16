@@ -28,27 +28,30 @@ template <typename T, typename keyT = int> struct cache_t {
     cache_t (std::list<keyT> req, size_t sz) {
         requests = req;
         size = sz;
+        cur_size = 0;
     }
     bool full() const {
         if (cur_size == size) return true;
         else return false;
     };
-    
+    //a<b - true
     bool compare(page_t &a, page_t &b) const {
         if (b.dst_to_next == -1) {return true;}
         if (a.dst_to_next == -1) {return false;}
         return a.dst_to_next < b.dst_to_next;
     };
     //check comparsion
+    ListIt check_pos(page_t &page) {
+        for (ListIt pos = cache.end(); pos != cache.begin(); pos--) {
+            if (!compare(*(--pos), page)) return pos;
+        }
+        return cache.end();
+    }
+    
     ListIt insert_to_cache(page_t &page) {
         assert(!full());
-
-        auto pos = cache.begin();
-        while (pos != cache.end() && compare(page, *pos)){
-            pos++;
-        }
-        if (pos != cache.end()) pos++;
-
+        auto pos = check_pos(page);
+        
         return cache.insert(pos, page);
         
     }
@@ -107,9 +110,12 @@ template <typename T, typename keyT = int> struct cache_t {
 
     int hit_cnt(T(*slow_get_page)(keyT)) {
         int hits = 0;
-        for (ReqIt key = requests.begin(); key != requests.end(); key++) {
-            if (add_req(key, slow_get_page)) hits++;
-            print();
+        for (auto key = requests.begin(); key != requests.end(); key++) {
+            std::cout << *key << std::endl;
+            if (add_req(key, slow_get_page)) {
+                hits++;
+            }
+            
         }
         return hits;         
     }
