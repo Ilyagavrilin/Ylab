@@ -60,8 +60,8 @@ template <typename T, typename keyT = int> struct cache_t {
     }
 
     void cache_step() {
-        for (page_t page: cache) {
-            if (page.dst_to_next != -1) page.dst_to_next--;
+        for (auto page = cache.begin(); page != cache.end(); page++) {
+            if ((*page).dst_to_next != -1) (*page).dst_to_next--;
         }
     }
     void transfer_page(ListIt &page, int new_dst) {
@@ -107,6 +107,7 @@ template <typename T, typename keyT = int> struct cache_t {
     void dump() const {
         std::cout << "current size: " << cur_size << ", max size: " << size << std::endl;
         print();
+        std::cout << std::endl;
     }
     
     void print() const {
@@ -123,6 +124,7 @@ template <typename T, typename keyT = int> struct cache_t {
             if (add_req(key, slow_get_page)) {
                 hits++;
             }
+            
         }
         return hits;         
     }
