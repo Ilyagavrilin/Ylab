@@ -25,8 +25,8 @@ template <typename T, typename keyT = int> struct cache_t {
     using ListIt = typename std::list<page_t>::iterator;
     std::unordered_map<keyT, ListIt> hash;
     
-    cache_t (std::list<keyT> req, size_t sz) {
-        requests = req;
+    cache_t (std::list<keyT> &req, size_t sz) {
+        requests.splice(requests.end(), req);
         size = sz;
         cur_size = 0;
     }
@@ -41,16 +41,19 @@ template <typename T, typename keyT = int> struct cache_t {
         return a.dst_to_next < b.dst_to_next;
     };
     //check comparsion
-    ListIt check_pos(page_t &page) {
-        for (ListIt pos = cache.end(); pos != cache.begin(); pos--) {
-            if (!compare(*(--pos), page)) return pos;
+    ListIt select_pos(page_t &page) {
+        for (ListIt ins_pos = cache.end(); ins_pos != cache.begin(); ins_pos--) {
+            if (compare(*std::prev(ins_pos), page)){ 
+                return ins_pos;
+            }
         }
-        return cache.end();
+        if (cur_size == 0) return cache.end();
+        return cache.begin();
     }
     
     ListIt insert_to_cache(page_t &page) {
         assert(!full());
-        auto pos = check_pos(page);
+        auto pos = select_pos(page);
         
         return cache.insert(pos, page);
         
@@ -63,13 +66,14 @@ template <typename T, typename keyT = int> struct cache_t {
     }
     void transfer_page(ListIt &page, int new_dst) {
         (*page).dst_to_next = new_dst;
-        auto pos = cache.begin();
+        /*auto pos = cache.begin();
         while (pos != cache.end() && compare(*page, *pos)){
             pos++;
         }
         if (pos != cache.end()) pos++;
-
-        cache.splice(pos, cache, page, std::next(page));
+        */
+        auto pos = select_pos(*page);
+        cache.splice(pos, cache, page);
     }
     
     int count_length(ReqIt cur_req) {
@@ -100,6 +104,11 @@ template <typename T, typename keyT = int> struct cache_t {
         return true;
     }
 
+    void dump() const {
+        std::cout << "current size: " << cur_size << ", max size: " << size << std::endl;
+        print();
+    }
+    
     void print() const {
         std::cout << "{ ";
         for (page_t page: cache) {
@@ -111,11 +120,9 @@ template <typename T, typename keyT = int> struct cache_t {
     int hit_cnt(T(*slow_get_page)(keyT)) {
         int hits = 0;
         for (auto key = requests.begin(); key != requests.end(); key++) {
-            std::cout << *key << std::endl;
             if (add_req(key, slow_get_page)) {
                 hits++;
             }
-            
         }
         return hits;         
     }
