@@ -1,121 +1,182 @@
-#pragma once
-
 #include <iostream>
 #include <list>
 #include <unordered_map>
 #include <cassert>
 
+namespace cache_2q {
 
-enum  q_name {
-    FIFO_IN, 
-    FIFO_OUT, 
-    LRU
+enum class Qname: int {
+    FIFO_IN,
+    FIFO_OUT,
+    LRU,
+    NOT_ALLOC,
 };
 
-struct cache_sz_t {
-        size_t fifo_in, fifo_out, lru, summary;
-};
+template <typename T> struct queue_t {
+    std::list<T> queue;
+    using ListIt = typename std::list<T>::iterator;
+    size_t cur_size, size;
+    Qname name;
+    bool full() const {
+        if (cur_size >= size) return true;
+        else return false;
+    }
+    /*
+    void dump_queue() {
+        std::cout << "queue name: ";
+        switch (name){
+            case Qname::FIFO_IN: std::cout << "FIFO_IN" << std::endl; break;
+            case Qname::FIFO_OUT: std::cout << "FIFO_OUT" << std::endl; break;
+            case Qname::LRU: std::cout << "LRU" << std::endl; break;
+            default: std::cout << "NOT ALLOCATED" << std::endl; break;
+        }
+    }*/
+    
+    void dump(void (*dumper)(T elem)) const {
+        
+        //dump_queue();
+        std::cout << "{ ";
+        for (T element:queue) {
+            dumper(element);
+            std::cout << "; ";
+        }
+        std::cout << "}" << std::endl;
+        std::cout << "current size: " << cur_size << ", max size: " << size << std::endl;
+    }
 
-template <typename T> struct caching_t {
+    queue_t() {
+        cur_size = 1;
+        size = 0;
+        name = Qname::NOT_ALLOC;
+    
+    }
+
+    queue_t(size_t sz, Qname nm) {
+        size = sz;
+        cur_size = 0;
+        name = nm;
+    }
+
+    T pop_end() {
+        assert(cur_size > 0);
+        T removed = queue.back();
+        queue.pop_back();
+        cur_size--;
+        return removed;
+    }
+
+    void push_start(T val) {
+        assert(!full());
+
+        queue.push_front(val);
+        cur_size++;
+    }
+
+    void delete_iter(ListIt to_delete) {
+        assert(cur_size > 0);
+        queue.erase(to_delete);
+        cur_size--;
+    }
+
+    void transfer_page(ListIt to_transfer) {
+        assert(cur_size > 0);
+        assert(name == Qname::LRU);
+
+        queue.splice(queue.begin(), queue, to_transfer);
+    }
+} ;
+
+template <typename T, typename keyT = int> struct page_t {
     T page;
-    q_name name;
-};
-
-template <typename T> struct fifo_t {
-    std::list<T> queue;
-    size_t size, cur_size;
-    
-    bool full() const {
-        if (size == cur_size) return true;
-        else return false;
-    };
-    
-    fifo_t(size_t sz) {
-        size = sz;
-        cur_size = 0;
-    };
-    
-    T add(T page) {
-        if (full()) {
-        T del_page;
-        del_page = queue.back();
-        queue.pop_back();
-        queue.push_front(page);
-        return del_page;
-        } else{
-        queue.push_front(page);
-        cur_size++;
-        return page;
-        }
-    };
-    
-    template <typename F> void extract(F page) {
-        queue.remove(page);
-    };
-};
-
-template <typename T> struct lru_t {
-    std::list<T> queue;
-    size_t size, cur_size;
-    
-    bool full() const {
-        if (size == cur_size) return true;
-        else return false;
-    };
-    
-    fifo_t(size_t sz) {
-        size = sz;
-        cur_size = 0;
-    };
-    
-    T add(T page) {
-        if (full()) {
-        T del_page;
-        del_page = queue.back();
-        queue.pop_back();
-        queue.push_front(page);
-        return del_page;
-        } else{
-        queue.push_front(page);
-        cur_size++;
-        return page;
-        }
-    };
-    
-    template <typename F> void access(F page) {
-        if (page != queue.begin()) {
-            queue.remove(page);
-            queue.push_front(page);
-        }
+    keyT key;
+    Qname name;
+    page_t(T pg, keyT ky, Qname nm) {
+        page = pg;
+        key = ky;
+        name = nm;
     };
 };
 
 
-//require: need a id field in F
+struct q_size_t {
+    size_t fifo_in, fifo_out, lru;
+    q_size_t(size_t size) {
+        fifo_in = size / 4;
+        lru = size - fifo_in;
+        fifo_out = lru / 2;
+    }
 
-inline cache_sz_t size_dstrb(size_t size) {
-    cache_sz_t sz;
-    sz.fifo_in = 3;
-    return sz;
+};
+
+void dump_page(page_t<int> page){
+        std::cout << "key: " << page.key << ", name: " << (int)page.name;
+    }
+void dump_key(int key){
+    std::cout << "key: " << key;
 }
-
 template <typename T, typename keyT = int> struct cache_t {
-    cache_sz_t size;
+    size_t size;
     // general queues for pages
-    fifo_t<caching_t<T>> *in;
-    lru_t<caching_t<T>> *lru;
+    queue_t<page_t<T>> fifo_in, lru;
      // addres only queue (look https://www.vldb.org/conf/1994/P439.PDF page 441 (2Q full version))
-    fifo_t<caching_t<keyT>> *out;
-    using ListIt_general = typename std::list<caching_t<T>>::iterator;
+    queue_t<keyT> fifo_out;
+    using ListIt_general = typename std::list<page_t<T>>::iterator;
     std::unordered_map<keyT, ListIt_general> hash_general;
-    using ListIt_addr = typename std::list<caching_t<keyT>>::iterator;
+    using ListIt_addr = typename std::list<keyT>::iterator;
     std::unordered_map<keyT, ListIt_addr> hash_addr;
+
     cache_t(size_t sz) {
-        assert(sz > 0);
-        cache_sz_t size = size_dstrb(sz);
-        fifo_in = new queue_t<caching_t<T>> (size.fifo_in);
-        lru = new queue_t<caching_t<T>> (size.lru);
-        fifo_out = new queue_t<caching_t<keyT>> (size.fifo_out);
-    };
-    template <typename F> bool update_cache(keyT key, F slow_get_page);
+        assert(sz > 4); 
+        size = sz;
+        q_size_t q_sz(sz);
+        fifo_in = queue_t<page_t<T>>(q_sz.fifo_in, Qname::FIFO_IN);
+        lru = queue_t<page_t<T>>(q_sz.lru, Qname::LRU);
+        fifo_out = queue_t<keyT>(q_sz.fifo_out, Qname::FIFO_OUT);
+    }
+    
+    bool add_req(keyT req, T(*slow_get_page)(keyT)) {
+        std::cout << "request: " << req << std::endl;
+        std::cout << "fifo in:" << std::endl;
+        fifo_in.dump(dump_page);
+        std::cout << "fifo out:" << std::endl;
+        fifo_out.dump(dump_key);
+        std::cout << "lru:" << std::endl;
+        lru.dump(dump_page);
+        auto hit = hash_general.find(req);
+        if (hit == hash_general.end()) {
+            //not in fifo_in and lru
+            auto hit_addr = hash_addr.find(req);
+            if (hit_addr == hash_addr.end()){
+                //not in fifo_out adding to fifo_in
+                if (fifo_in.full()) {
+                    page_t<T> page = fifo_in.pop_end();
+                    page.name = Qname::NOT_ALLOC;
+
+                    if (fifo_out.full()) fifo_out.pop_end();
+                    fifo_out.push_start(page.key);
+                }
+                page_t<T> to_add(slow_get_page(req), req, Qname::FIFO_IN);
+                fifo_in.push_start(to_add);
+            } else {
+                //in fifo_out, load page then add to lru
+                ListIt_addr key = hit_addr->second;
+                fifo_out.delete_iter(key);
+                if (lru.full()) lru.pop_end();
+                page_t<T> to_add(slow_get_page(req), req, Qname::LRU);
+                lru.push_start(to_add);
+            }
+            return false;
+        } else {
+            //in fifo_in or lru
+            //if in fifo_in - do nothing
+            ListIt_general page_it = hit->second;
+            page_t<T> page = *page_it;
+            if (page.name == Qname::LRU) {
+                lru.transfer_page(page_it);
+            }
+            return true;
+        }
+    }
+
 };
+}

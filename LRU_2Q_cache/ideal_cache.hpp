@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cassert>
 
-
+namespace ideal_cache {
 template <typename T, typename keyT = int> struct page_t_ {
     T page;
     keyT key;
@@ -31,7 +31,7 @@ template <typename T, typename keyT = int> struct cache_t {
         cur_size = 0;
     }
     bool full() const {
-        if (cur_size == size) return true;
+        if (cur_size >= size) return true;
         else return false;
     };
     //a<b - true
@@ -66,12 +66,6 @@ template <typename T, typename keyT = int> struct cache_t {
     }
     void transfer_page(ListIt &page, int new_dst) {
         (*page).dst_to_next = new_dst;
-        /*auto pos = cache.begin();
-        while (pos != cache.end() && compare(*page, *pos)){
-            pos++;
-        }
-        if (pos != cache.end()) pos++;
-        */
         auto pos = select_pos(*page);
         cache.splice(pos, cache, page);
     }
@@ -129,3 +123,4 @@ template <typename T, typename keyT = int> struct cache_t {
         return hits;         
     }
 };
+}
