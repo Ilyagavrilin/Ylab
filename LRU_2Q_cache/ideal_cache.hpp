@@ -20,14 +20,13 @@ template <typename T, typename keyT = int> struct page_t_ {
 template <typename T, typename keyT = int> struct cache_t {
     using page_t = page_t_<T>;
     using ReqIt = typename std::list<keyT>::iterator;
-    std::list<keyT> requests;
+    std::list<keyT> &requests;
     std::list<page_t> cache;
     size_t size, cur_size;
     using ListIt = typename std::list<page_t>::iterator;
     std::unordered_map<keyT, ListIt> hash;
     
-    cache_t(std::list<keyT> &req, size_t sz){
-        requests.splice(requests.end(), req);
+    cache_t(std::list<keyT> &req, size_t sz): requests(req) {
         size = sz;
         cur_size = 0;
     };
@@ -119,6 +118,9 @@ template <typename T, typename keyT = int> struct cache_t {
         for (auto key = requests.begin(); key != requests.end(); key++) {
             if (add_req(key, slow_get_page)) {
                 hits++;
+#ifdef DEBUG 
+                dump();
+#endif                
             }
             
         }

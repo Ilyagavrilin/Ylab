@@ -2,7 +2,7 @@
 #include <list>
 #include <unordered_map>
 #include <cassert>
-#define DEBUG
+
 
 namespace cache_2q {
 
@@ -22,7 +22,8 @@ template <typename T> struct queue_t {
         if (cur_size >= size) return true;
         else return false;
     }
-    /*
+    
+#ifdef DUMP_QUEUE //don`t work for enum class    
     void dump_queue() {
         std::cout << "queue name: ";
         switch (name){
@@ -31,7 +32,8 @@ template <typename T> struct queue_t {
             case Qname::LRU: std::cout << "LRU" << std::endl; break;
             default: std::cout << "NOT ALLOCATED" << std::endl; break;
         }
-    }*/
+    }
+#endif    
     
     void dump(void (*dumper)(T elem)) const {
         
@@ -75,7 +77,6 @@ template <typename T> struct queue_t {
 
     void delete_iter(ListIt to_delete) {
         assert(cur_size > 0);
-        std::cout << "called to delete: " << *to_delete << std::endl;
         queue.erase(to_delete);
         cur_size--;
     }
@@ -132,8 +133,10 @@ template <typename T, typename keyT = int> struct cache_t {
     queue_t<page_t<T>> fifo_in, lru;
      // addres only queue (look https://www.vldb.org/conf/1994/P439.PDF page 441 (2Q full version))
     queue_t<keyT> fifo_out;
+    
     using ListIt_general = typename std::list<page_t<T>>::iterator;
     std::unordered_map<keyT, ListIt_general> hash_general;
+    
     using ListIt_addr = typename std::list<keyT>::iterator;
     std::unordered_map<keyT, ListIt_addr> hash_addr;
 
@@ -157,6 +160,7 @@ template <typename T, typename keyT = int> struct cache_t {
         lru.dump(dump_page);
         std::cout << std::endl;
 #endif        
+        
         auto hit = hash_general.find(req);
         if (hit == hash_general.end()) {
             //not in fifo_in and lru
@@ -203,6 +207,14 @@ template <typename T, typename keyT = int> struct cache_t {
             }
             return true;
         }
+    }
+    
+    int hit_cnt(std::list<keyT> &requests, T(*slow_get_page)(keyT)) {
+        int hit = 0;
+        for (keyT key: requests) {
+            if (add_req(key, slow_get_page)) hit++;
+        }
+        return hit;
     }
 
 };

@@ -1,4 +1,5 @@
 #include <list>
+#include <cassert>
 #include "ideal_cache.hpp"
 #include "cache_2q.hpp"
 
@@ -9,36 +10,23 @@ int get_page(int key)
 
 int main()
 {
-    /*std::list<int> req ;
+    std::list<int> requests ;
     int cnt;
     size_t cache_sz;
-    std::cin >> cnt;
-    std::cin >> cache_sz;
+    std::cin >> cnt >> cache_sz;
+    assert(std::cin.good());
     for (int i = 0; i < cnt; i++) {
         int a;
         std::cin >> a;
-        req.push_back(a);
+        requests.push_back(a);
     }
     
+    ideal_cache::cache_t<int> ideal(requests, cache_sz);
+    cache_2q::cache_t<int> cache2q(cache_sz);
 
-    ideal_cache::cache_t<int> a(req, cache_sz);
-    std::cout << a.hit_cnt(get_page) << std::endl;
-    */
-    std::list<int> req;
-    int cnt;
-    size_t cache_sz;
-    std::cin >> cnt;
-    std::cin >> cache_sz;
-    for (int i = 0; i < cnt; i++) {
-        int a;
-        std::cin >> a;
-        req.push_back(a);
-    }
-    cache_2q::cache_t<int> a(cache_sz);
-    int hit = 0;
-    for (int request: req) {
-        if (a.add_req(request, get_page)) hit++;
-    }
-    std::cout << hit << std::endl;
+    std::cout << "cache 2q: " << cache2q.hit_cnt(requests, get_page) << std::endl;
+    std::cout << "ideal cache: " << ideal.hit_cnt(get_page) << std::endl;
+
+    
     return 0;
 }
