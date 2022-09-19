@@ -9,11 +9,12 @@ template <typename T, typename keyT = int> struct page_t_ {
     T page;
     keyT key;
     int dst_to_next;
-    page_t_(T page_, keyT key_, int dst_to_next_) {
+    
+    page_t_(T page_, keyT key_, int dst_to_next_){
         page = page_;
         key =key_;
         dst_to_next = dst_to_next_;
-    }
+    };
 };
 
 template <typename T, typename keyT = int> struct cache_t {
@@ -25,23 +26,24 @@ template <typename T, typename keyT = int> struct cache_t {
     using ListIt = typename std::list<page_t>::iterator;
     std::unordered_map<keyT, ListIt> hash;
     
-    cache_t (std::list<keyT> &req, size_t sz) {
+    cache_t(std::list<keyT> &req, size_t sz){
         requests.splice(requests.end(), req);
         size = sz;
         cur_size = 0;
-    }
-    bool full() const {
+    };
+    
+    bool full() const{
         if (cur_size >= size) return true;
         else return false;
     };
     //a<b - true
-    bool compare(page_t &a, page_t &b) const {
+    bool compare(page_t &a, page_t &b) const{
         if (b.dst_to_next == -1) {return true;}
         if (a.dst_to_next == -1) {return false;}
         return a.dst_to_next < b.dst_to_next;
     };
-    //check comparsion
-    ListIt select_pos(page_t &page) {
+    
+    ListIt select_pos(page_t &page){
         for (ListIt ins_pos = cache.end(); ins_pos != cache.begin(); ins_pos--) {
             if (compare(*std::prev(ins_pos), page)){ 
                 return ins_pos;
@@ -49,7 +51,7 @@ template <typename T, typename keyT = int> struct cache_t {
         }
         if (cur_size == 0) return cache.end();
         return cache.begin();
-    }
+    };
     
     ListIt insert_to_cache(page_t &page) {
         assert(!full());

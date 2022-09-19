@@ -2,6 +2,7 @@
 #include <list>
 #include <unordered_map>
 #include <cassert>
+#define DEBUG
 
 namespace cache_2q {
 
@@ -74,6 +75,7 @@ template <typename T> struct queue_t {
 
     void delete_iter(ListIt to_delete) {
         assert(cur_size > 0);
+        std::cout << "called to delete: " << *to_delete << std::endl;
         queue.erase(to_delete);
         cur_size--;
     }
@@ -83,6 +85,16 @@ template <typename T> struct queue_t {
         assert(name == Qname::LRU);
 
         queue.splice(queue.begin(), queue, to_transfer);
+    }
+
+    ListIt get_first() {
+        assert(cur_size > 0);
+        return queue.begin();
+    }
+
+    ListIt get_last() {
+        assert(cur_size > 0);
+        return std::prev(queue.end());
     }
 } ;
 
@@ -135,6 +147,7 @@ template <typename T, typename keyT = int> struct cache_t {
     }
     
     bool add_req(keyT req, T(*slow_get_page)(keyT)) {
+#ifdef DEBUG
         std::cout << "request: " << req << std::endl;
         std::cout << "fifo in:" << std::endl;
         fifo_in.dump(dump_page);
@@ -142,6 +155,8 @@ template <typename T, typename keyT = int> struct cache_t {
         fifo_out.dump(dump_key);
         std::cout << "lru:" << std::endl;
         lru.dump(dump_page);
+        std::cout << std::endl;
+#endif        
         auto hit = hash_general.find(req);
         if (hit == hash_general.end()) {
             //not in fifo_in and lru
@@ -150,20 +165,32 @@ template <typename T, typename keyT = int> struct cache_t {
                 //not in fifo_out adding to fifo_in
                 if (fifo_in.full()) {
                     page_t<T> page = fifo_in.pop_end();
+                    hash_general.erase(page.key);
                     page.name = Qname::NOT_ALLOC;
 
-                    if (fifo_out.full()) fifo_out.pop_end();
+                    if (fifo_out.full()) {
+                        hash_addr.erase(*(fifo_out.get_last()));
+                        fifo_out.pop_end();
+                    }
                     fifo_out.push_start(page.key);
+                    hash_addr[page.key] = fifo_out.get_first();
                 }
                 page_t<T> to_add(slow_get_page(req), req, Qname::FIFO_IN);
                 fifo_in.push_start(to_add);
+                hash_general[req] = fifo_in.get_first();
             } else {
                 //in fifo_out, load page then add to lru
                 ListIt_addr key = hit_addr->second;
                 fifo_out.delete_iter(key);
-                if (lru.full()) lru.pop_end();
+                hash_addr.erase(*key);
+
+                if (lru.full()){ 
+                    keyT deleted_key = (lru.pop_end()).key;
+                    hash_general.erase(deleted_key);
+                }
                 page_t<T> to_add(slow_get_page(req), req, Qname::LRU);
                 lru.push_start(to_add);
+                hash_general[req] = lru.get_first();
             }
             return false;
         } else {
