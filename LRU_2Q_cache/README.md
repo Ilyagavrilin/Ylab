@@ -8,3 +8,7 @@ You can compile programm with command: `make all`, and call it: `./cache`.
 ## Built-in debug mode
 To compile in debug mode: `make debug`, and call it: `./cache`.   
 Demonstrates dump of cache`s lists each step (request).
+## Input parameters
+After call of compilated programm type size of cache, number of requests, then requests. For sizes smaller than 4 will be called other realization of 2q cache, look 2Q cache size problems.
+## 2Q cache size problems
+In lru 2Q we have 3 queues, so we can`t split some small sizes for 3 queues. As a  silution: for small sizes (smaller than 4) we use fifo queue like cache. So, this isn`t best solution, but it`s don`t influence on main realization of alghorithm.

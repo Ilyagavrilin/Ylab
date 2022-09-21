@@ -13,7 +13,7 @@ int main()
     std::list<int> requests ;
     int cnt;
     size_t cache_sz;
-    std::cin >> cnt >> cache_sz;
+    std::cin >> cache_sz >> cnt;
     assert(std::cin.good());
     for (int i = 0; i < cnt; i++) {
         int a;

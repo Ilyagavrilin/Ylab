@@ -114,9 +114,11 @@ template <typename T, typename keyT = int> struct page_t {
 struct q_size_t {
     size_t fifo_in, fifo_out, lru;
     q_size_t(size_t size) {
+        
         fifo_in = size / 4;
         lru = size - fifo_in;
         fifo_out = lru / 2;
+        
     }
 
 };
@@ -128,6 +130,8 @@ void dump_key(int key){
     std::cout << "key: " << key;
 }
 template <typename T, typename keyT = int> struct cache_t {
+    bool fifo_mode;
+
     size_t size;
     // general queues for pages
     queue_t<page_t<T>> fifo_in, lru;
@@ -141,15 +145,40 @@ template <typename T, typename keyT = int> struct cache_t {
     std::unordered_map<keyT, ListIt_addr> hash_addr;
 
     cache_t(size_t sz) {
-        assert(sz > 4); 
+        assert(sz > 0);
         size = sz;
-        q_size_t q_sz(sz);
-        fifo_in = queue_t<page_t<T>>(q_sz.fifo_in, Qname::FIFO_IN);
-        lru = queue_t<page_t<T>>(q_sz.lru, Qname::LRU);
-        fifo_out = queue_t<keyT>(q_sz.fifo_out, Qname::FIFO_OUT);
+        if (sz >= 4) {
+            q_size_t q_sz(sz);
+            fifo_in = queue_t<page_t<T>>(q_sz.fifo_in, Qname::FIFO_IN);
+            lru = queue_t<page_t<T>>(q_sz.lru, Qname::LRU);
+            fifo_out = queue_t<keyT>(q_sz.fifo_out, Qname::FIFO_OUT);
+            fifo_mode = false;
+        } else {
+            fifo_in = queue_t<page_t<T>>(size, Qname::FIFO_IN);
+            fifo_mode = true;
+        }
+    }
+    
+    bool add_fifo(keyT req, T(*slow_get_page)(keyT)) {
+        auto hit = hash_general.find(req);
+        if (hit == hash_general.end()) {
+            if (fifo_in.full()) {
+                page_t<T> page = fifo_in.pop_end();
+                hash_general.erase(page.key);
+                page.name = Qname::NOT_ALLOC;
+                
+            }
+            page_t<T> to_add(slow_get_page(req), req, Qname::FIFO_IN);
+            fifo_in.push_start(to_add);
+            hash_general[req] = fifo_in.get_first();
+            return false;
+        } else {
+            return true;
+        }
     }
     
     bool add_req(keyT req, T(*slow_get_page)(keyT)) {
+
 #ifdef DEBUG
         std::cout << "request: " << req << std::endl;
         std::cout << "fifo in:" << std::endl;
@@ -159,7 +188,8 @@ template <typename T, typename keyT = int> struct cache_t {
         std::cout << "lru:" << std::endl;
         lru.dump(dump_page);
         std::cout << std::endl;
-#endif        
+#endif
+        if (fifo_mode) return add_fifo(req, slow_get_page);        
         
         auto hit = hash_general.find(req);
         if (hit == hash_general.end()) {
