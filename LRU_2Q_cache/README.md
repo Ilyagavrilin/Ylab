@@ -11,4 +11,4 @@ Demonstrates dump of cache`s lists each step (request).
 ## Input parameters
 After call of compilated programm type size of cache, number of requests, then requests. For sizes smaller than 4 will be called other realization of 2q cache, look 2Q cache size problems.
 ## 2Q cache size problems
-In lru 2Q we have 3 queues, so we can`t split some small sizes for 3 queues. As a  silution: for small sizes (smaller than 4) we use fifo queue like cache. So, this isn`t best solution, but it`s don`t influence on main realization of alghorithm.
+In lru 2Q we have 3 queues, so we can not split some small sizes for 3 queues. As a  silution: for small sizes (smaller than 4) we use fifo queue like cache. So, this is not best solution, but it is do not influence on main realization of alghorithm.
