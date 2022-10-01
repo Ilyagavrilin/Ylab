@@ -1,28 +1,45 @@
 #files with source code
-SOURCE= main.cpp
-OBJECTS=$(SOURCE:.cpp=.o)
-#resulting file
-EXECUTABLE=cache
+SOURCE_DIR = src/
+EXEC_DIR = executable/
+SOURCE= $(addprefix $(SOURCE_DIR), cache_2q.cpp cache_ideal.cpp)
+CMP_SOURCE = $(addprefix $(SOURCE_DIR), main.cpp)
+
+PROJECT=cache
 #compilation options
 DBGFLAGS = -Wall -Wfloat-equal -Wundef -DDEBUG
+BLDFLAGS = $(CXXFLAGS) -O3
+TSTFLAGS = -Wall -Wfloat-equal -Wundef -lgtest -lgmock -pthread -DTEST
+#strange define, but it works for foreach
+.PHONY: all debug test cmp_cache
+define \n
 
 
-all: $(SOURCE) $(EXECUTABLE) clean
+endef
 
-debug:
-	$(CXX) $(SOURCE) $(DBGFLAGS)  -o $(EXECUTABLE)
+define BUILD_LIST
+	$(foreach elem, $(1), $(CXX) $(elem) $(2)  -o $(EXEC_DIR)$(basename $(notdir $(elem))).out ${\n})
+endef
+
+all: $(SOURCE)
+	mkdir -p $(EXEC_DIR)
+	$(call BUILD_LIST, $(SOURCE), $(BLDFLAGS))
+
+debug: $(SOURCE)
+	mkdir -p $(EXEC_DIR)
+	$(call BUILD_LIST, $(SOURCE), $(DBGFLAGS))
 
 
-build_obj: $(SOURCE) $(EXECUTABLE)
+test: $(SOURCE)
+	mkdir -p $(EXEC_DIR)
+	$(call BUILD_LIST, $(SOURCE), $(TSTFLAGS))
 
-$(EXECUTABLE): $(OBJECTS)
-	$(CXX) $(OBJECTS) -o $@
+cmp_cache: $(CMP_SOURCE)
+	mkdir -p $(EXEC_DIR)
+	$(CXX) $(BLDFLAGS) $(CMP_SOURCE) -o $(EXEC_DIR)$(basename $(notdir $(CMP_SOURCE))).out
 
-.c.o:
-	$(CXX) -c $(CXXFLAGS) $< -o $@
 
 clean_all:
-	rm -rf *.o $(EXECUTABLE)
+	rm -rf *.o $(foreach elem, $(SOURCE) $(CMP_SOURCE), $(basename $(elem)).out)
 
 clean:
 	rm -rf *.o 

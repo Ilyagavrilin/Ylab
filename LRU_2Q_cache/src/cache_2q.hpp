@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <list>
 #include <unordered_map>
@@ -239,7 +240,7 @@ template <typename T, typename keyT = int> struct cache_t {
         }
     }
     
-    int hit_cnt(std::list<keyT> &requests, T(*slow_get_page)(keyT)) {
+    int hit_cnt(const std::list<keyT> &requests, T(*slow_get_page)(keyT)) {
         int hit = 0;
         for (keyT key: requests) {
             if (add_req(key, slow_get_page)) hit++;

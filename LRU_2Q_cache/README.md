@@ -3,11 +3,12 @@ This project - realization of LRU_2Q algorithm, and comparsion with ideal cache 
 Realization prepared as homework for 2-nd course Ylab course.  
 Link to idea of LRU_2Q algorithm: https://www.vldb.org/conf/1994/P439.PDF .  
 All tests were on Linux Ubuntu 22.04 LTS .
-## Compilation
-You can compile programm with command: `make all`, and call it: `./cache`.
-## Built-in debug mode
-To compile in debug mode: `make debug`, and call it: `./cache`.   
-Demonstrates dump of cache`s lists each step (request).
+## Build and execution
+To build program type `make`, then will be created `executables\`, there you can call `./cache_2q.out` or `./cache_ideal.out`.  
+There also `make debug` - make similar binaries, but with debugging info for each step.  
+Mode `make test` will build similar executables, but they will run integrated test. (Warning: the gtest lib should be installed in standart libraries path)  
+Finally, `make cmp_cache` will build `main.out` thats combines 2q and ideal cache.  
+
 ## Input parameters
 After call of compilated programm type size of cache, number of requests, then requests. For sizes smaller than 4 will be called other realization of 2q cache, look 2Q cache size problems.
 ## 2Q cache size problems

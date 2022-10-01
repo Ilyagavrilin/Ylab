@@ -1,3 +1,4 @@
+#pragma once
 #include <list>
 #include <unordered_map>
 #include <iostream>
@@ -11,16 +12,15 @@ template <typename T, typename keyT = int> struct page_t_ {
     T page;
     keyT key;
     
-    page_t_(T page_, keyT key_): key(key_), page(page_) {};
+    page_t_(T page_, keyT key_): page(page_), key(key_)  {};
 };
 
 template <typename T, typename keyT = int, typename DstT = unsigned long> struct cache_t {
     using page_t = page_t_<T>;
     using ReqIt = typename std::list<keyT>::iterator;
     struct req_t {
-        keyT key;
-        unsigned long dst_to_next;
-        
+        keyT key ;
+        unsigned long dst_to_next ;
         req_t(): key(0), dst_to_next(0) {};
         req_t(keyT key_, unsigned long dst_): key(key_), dst_to_next(dst_) {};
     };
@@ -31,8 +31,7 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
     std::unordered_map<keyT, MapIt> hash;
 
     
-    
-    cache_t(std::list<keyT> &requests, size_t sz, size_t nreqs): cur_size(0), size(sz), reqs_cnt(nreqs) {
+    cache_t(const std::list<keyT> &requests, size_t sz, size_t nreqs): size(sz), cur_size(0), reqs_cnt(nreqs) {
         std::map<keyT, unsigned long> elems;
         reqs = new req_t[nreqs];
         unsigned long pos = 0;
@@ -54,6 +53,10 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
         }
 
     };
+
+    ~cache_t() {
+        delete [] reqs;
+    }
     
     void dump_reqs() const {
         for (int i = 0; i < reqs_cnt; i++) {
@@ -70,10 +73,6 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
         if (cur_size >= size) return true;
         else return false;
     };
-    //a<b - true
-    bool compare(page_t &a, page_t &b) const{
-        return a.dst_to_next < b.dst_to_next;
-    };
     
     void dump() const {
         std::cout << "current size: " << cur_size << " ";
@@ -84,9 +83,12 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
         std::cout << std::endl;
     }
     
+
     bool add_req(unsigned long nreq, req_t cur_req, T(*slow_get_page)(keyT)) {
         auto hit = hash.find(cur_req.key);
         if (hit == hash.end()) {
+            if (cur_req.dst_to_next == ULONG_MAX) return false;
+            
             if (full()) {
                 MapIt to_delete = std::prev(cache.end());
                 hash.erase(to_delete->second.key);
@@ -102,13 +104,16 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
             MapIt hit_map = hit->second;
             page_t hit_page = hit_map->second;
             cache.erase(hit_map);
-            MapIt added = cache.insert(std::pair{count_length(cur_req.dst_to_next, nreq), hit_page});
-            hash[cur_req.key] = added;
+            if (cur_req.dst_to_next < ULONG_MAX){    
+                MapIt added = cache.insert(std::pair{count_length(cur_req.dst_to_next, nreq), hit_page});
+                hash[cur_req.key] = added;
+            }
             return true;
         }
 
         
     }
+
     int hit_cnt(T(*slow_get_page)(keyT)) {
         int hits = 0;
         for (unsigned long nreq = 0; nreq < reqs_cnt; nreq++) {
