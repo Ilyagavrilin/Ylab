@@ -47,7 +47,9 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
 
             pos++;
         }
-        for (const auto& [key, value] : elems) {
+        for (const auto elem : elems) {
+            const auto key = elem.first;
+            const auto value = elem.second;
             reqs[value].key = key;
             reqs[value].dst_to_next = ULONG_MAX;
         }
@@ -96,7 +98,7 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
                 cur_size--;
             }
             page_t to_add(slow_get_page(cur_req.key), cur_req.key);
-            MapIt added = cache.insert(std::pair{count_length(cur_req.dst_to_next, nreq), to_add});
+            MapIt added = cache.insert(std::pair<unsigned long, page_t>{count_length(cur_req.dst_to_next, nreq), to_add});
             hash[cur_req.key] = added;
             cur_size++;
             return false;
@@ -104,9 +106,11 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
             MapIt hit_map = hit->second;
             page_t hit_page = hit_map->second;
             cache.erase(hit_map);
+            cur_size--;
             if (cur_req.dst_to_next < ULONG_MAX){    
-                MapIt added = cache.insert(std::pair{count_length(cur_req.dst_to_next, nreq), hit_page});
+                MapIt added = cache.insert(std::pair<unsigned long, page_t> {count_length(cur_req.dst_to_next, nreq), hit_page});
                 hash[cur_req.key] = added;
+                cur_size++;
             }
             return true;
         }

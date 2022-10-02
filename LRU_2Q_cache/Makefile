@@ -6,9 +6,9 @@ CMP_SOURCE = $(addprefix $(SOURCE_DIR), main.cpp)
 
 PROJECT=cache
 #compilation options
-DBGFLAGS = -Wall -Wfloat-equal -Wundef -DDEBUG
-BLDFLAGS = $(CXXFLAGS) -O3
-TSTFLAGS = -Wall -Wfloat-equal -Wundef -lgtest -lgmock -pthread -DTEST
+DBGFLAGS = -Wall -Wfloat-equal -Wundef -DDEBUG --std=c++2a
+BLDFLAGS = $(CXXFLAGS) -O3 --std=c++2a
+TSTFLAGS = -Wall -Wfloat-equal -Wundef -lgtest -lgmock -pthread -DTEST --std=c++2a
 #strange define, but it works for foreach
 .PHONY: all debug test cmp_cache
 define \n
