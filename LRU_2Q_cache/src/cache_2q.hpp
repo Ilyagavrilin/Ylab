@@ -17,8 +17,8 @@ enum class Qname: int {
 template <typename T> struct queue_t {
     std::list<T> queue;
     using ListIt = typename std::list<T>::iterator;
-    size_t cur_size, size;
-    Qname name;
+    size_t cur_size = 1, size = 0;
+    Qname name = Qname::NOT_ALLOC;
     bool full() const {
         if (cur_size >= size) return true;
         else return false;
@@ -48,18 +48,9 @@ template <typename T> struct queue_t {
         std::cout << "current size: " << cur_size << ", max size: " << size << std::endl;
     }
 
-    queue_t() {
-        cur_size = 1;
-        size = 0;
-        name = Qname::NOT_ALLOC;
-    
-    }
+    queue_t() {};
 
-    queue_t(size_t sz, Qname nm) {
-        size = sz;
-        cur_size = 0;
-        name = nm;
-    }
+    queue_t(size_t sz, Qname nm): size(sz), cur_size(0), name(nm) {};
 
     T pop_end() {
         assert(cur_size > 0);
@@ -99,28 +90,18 @@ template <typename T> struct queue_t {
         return std::prev(queue.end());
     }
 } ;
-
+//Here we should forbid construct without args (default constructor)
 template <typename T, typename keyT = int> struct page_t {
     T page;
     keyT key;
     Qname name;
-    page_t(T pg, keyT ky, Qname nm) {
-        page = pg;
-        key = ky;
-        name = nm;
-    };
+    page_t(T pg, keyT ky, Qname nm): page(pg), key(ky), name(nm) {};
 };
 
 
 struct q_size_t {
-    size_t fifo_in, fifo_out, lru;
-    q_size_t(size_t size) {
-        
-        fifo_in = size / 4;
-        lru = size - fifo_in;
-        fifo_out = lru / 2;
-        
-    }
+    size_t fifo_in, lru, fifo_out;
+    q_size_t(size_t size): fifo_in(size/4), lru(size - fifo_in), fifo_out(lru / 2) {};
 
 };
 
@@ -145,9 +126,8 @@ template <typename T, typename keyT = int> struct cache_t {
     using ListIt_addr = typename std::list<keyT>::iterator;
     std::unordered_map<keyT, ListIt_addr> hash_addr;
 
-    cache_t(size_t sz) {
+    cache_t(size_t sz): size(sz) {
         assert(sz > 0);
-        size = sz;
         if (sz >= 4) {
             q_size_t q_sz(sz);
             fifo_in = queue_t<page_t<T>>(q_sz.fifo_in, Qname::FIFO_IN);

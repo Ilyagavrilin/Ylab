@@ -24,7 +24,7 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
         req_t(): key(0), dst_to_next(0) {};
         req_t(keyT key_, unsigned long dst_): key(key_), dst_to_next(dst_) {};
     };
-    req_t* reqs;
+    std::vector<req_t> reqs;
     size_t size, cur_size, reqs_cnt;
     std::multimap<DstT, page_t> cache;
     using MapIt = typename std::map<DstT, page_t>::iterator;
@@ -33,7 +33,7 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
     
     cache_t(const std::list<keyT> &requests, size_t sz, size_t nreqs): size(sz), cur_size(0), reqs_cnt(nreqs) {
         std::map<keyT, unsigned long> elems;
-        reqs = new req_t[nreqs];
+        reqs.resize(nreqs);
         unsigned long pos = 0;
         for (keyT req: requests) {
             auto hit = elems.find(req);
@@ -56,9 +56,6 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
 
     };
 
-    ~cache_t() {
-        delete [] reqs;
-    }
     
     void dump_reqs() const {
         for (int i = 0; i < reqs_cnt; i++) {
