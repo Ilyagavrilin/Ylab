@@ -50,7 +50,7 @@ template <typename T> struct queue_t {
 
     queue_t() {};
 
-    queue_t(size_t sz, Qname nm): size(sz), cur_size(0), name(nm) {};
+    queue_t(size_t sz, Qname nm): cur_size(0), size(sz), name(nm) {};
 
     T pop_end() {
         assert(cur_size > 0);

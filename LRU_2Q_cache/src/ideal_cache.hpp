@@ -29,7 +29,7 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
     std::multimap<DstT, page_t> cache;
     using MapIt = typename std::map<DstT, page_t>::iterator;
     std::unordered_map<keyT, MapIt> hash;
-
+    using HashIt = typename std::unordered_map<keyT, MapIt>::iterator;
     
     cache_t(const std::list<keyT> &requests, size_t sz, size_t nreqs): size(sz), cur_size(0), reqs_cnt(nreqs) {
         std::map<keyT, unsigned long> elems;
@@ -83,32 +83,43 @@ template <typename T, typename keyT = int, typename DstT = unsigned long> struct
     }
     
 
-    bool add_req(unsigned long nreq, req_t cur_req, T(*slow_get_page)(keyT)) {
+    bool add_new(unsigned long nreq, req_t &cur_req, T(*slow_get_page)(keyT)) {
+    if (cur_req.dst_to_next == ULONG_MAX) return false;
+        
+    if (full()) {
+        MapIt to_delete = std::prev(cache.end());
+        hash.erase(to_delete->second.key);
+        cache.erase(to_delete);
+        cur_size--;
+    }
+    page_t to_add(slow_get_page(cur_req.key), cur_req.key);
+    MapIt added = cache.insert(std::pair<unsigned long, page_t>{count_length(cur_req.dst_to_next, nreq), to_add});
+    hash[cur_req.key] = added;
+    cur_size++;
+    return true;
+
+    }
+
+    void update_exist(unsigned long nreq, req_t &cur_req, HashIt hit) {
+    MapIt hit_map = hit->second;
+    page_t hit_page = hit_map->second;
+    cache.erase(hit_map);
+    cur_size--;
+    if (cur_req.dst_to_next < ULONG_MAX){    
+        MapIt added = cache.insert(std::pair<unsigned long, page_t> {count_length(cur_req.dst_to_next, nreq), hit_page});
+        hash[cur_req.key] = added;
+        cur_size++;
+    }
+    }
+    
+    bool add_req(unsigned long nreq, req_t &cur_req, T(*slow_get_page)(keyT)) {
         auto hit = hash.find(cur_req.key);
         if (hit == hash.end()) {
-            if (cur_req.dst_to_next == ULONG_MAX) return false;
-            
-            if (full()) {
-                MapIt to_delete = std::prev(cache.end());
-                hash.erase(to_delete->second.key);
-                cache.erase(to_delete);
-                cur_size--;
-            }
-            page_t to_add(slow_get_page(cur_req.key), cur_req.key);
-            MapIt added = cache.insert(std::pair<unsigned long, page_t>{count_length(cur_req.dst_to_next, nreq), to_add});
-            hash[cur_req.key] = added;
-            cur_size++;
+            add_new(nreq, cur_req, slow_get_page);
             return false;
         } else {
-            MapIt hit_map = hit->second;
-            page_t hit_page = hit_map->second;
-            cache.erase(hit_map);
-            cur_size--;
-            if (cur_req.dst_to_next < ULONG_MAX){    
-                MapIt added = cache.insert(std::pair<unsigned long, page_t> {count_length(cur_req.dst_to_next, nreq), hit_page});
-                hash[cur_req.key] = added;
-                cur_size++;
-            }
+            update_exist(nreq, cur_req, hit);
+
             return true;
         }
 
