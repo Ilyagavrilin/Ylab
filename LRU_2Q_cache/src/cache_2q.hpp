@@ -89,12 +89,17 @@ template <typename T> struct queue_t {
         assert(cur_size > 0);
         return std::prev(queue.end());
     }
+
+    ListIt get_end() {
+        return queue.end();
+    }
 } ;
 //Here we should forbid construct without args (default constructor)
 template <typename T, typename keyT = int> struct page_t {
     T page;
     keyT key;
     Qname name;
+    page_t(): name(Qname::NOT_ALLOC) {};
     page_t(T pg, keyT ky, Qname nm): page(pg), key(ky), name(nm) {};
 };
 
@@ -140,7 +145,7 @@ template <typename T, typename keyT = int> struct cache_t {
         }
     }
     
-    bool add_fifo(keyT req, T(*slow_get_page)(keyT)) {
+    bool add_fifo_mode(keyT req, T(*slow_get_page)(keyT)) {
         auto hit = hash_general.find(req);
         if (hit == hash_general.end()) {
             if (fifo_in.full()) {
@@ -158,6 +163,60 @@ template <typename T, typename keyT = int> struct cache_t {
         }
     }
     
+    page_t<T> add_fifo_in(page_t<T> to_add) {
+        page_t<T> page;
+        if (fifo_in.full()) {
+            page = fifo_in.pop_end();
+            hash_general.erase(page.key);
+        }
+        fifo_in.push_start(to_add);
+        hash_general[to_add.key] = fifo_in.get_first();
+        return page;
+
+    }
+    //don`t need a return page, because it also going to delete after usuage
+    keyT add_fifo_out(keyT key) {
+    keyT deleted = 0;
+    if (fifo_out.full()) {
+            deleted = fifo_out.pop_end();
+            hash_addr.erase(deleted);
+        }
+    fifo_out.push_start(key);
+    hash_addr[key] = fifo_out.get_first();
+    
+    return deleted;
+    }
+
+    page_t<T> add_lru(page_t<T> to_add) {
+    page_t<T> deleted;
+    if (lru.full()){ 
+        deleted = lru.pop_end();
+        hash_general.erase(deleted.key);
+    }
+    lru.push_start(to_add);
+    hash_general[to_add.key] = lru.get_first();
+    return deleted;
+    }
+
+    void add_not_stored(keyT req, T(*slow_get_page)(keyT)) {
+    auto hit_addr = hash_addr.find(req);
+    if (hit_addr == hash_addr.end()){
+        //not in fifo_out adding to fifo_in
+        page_t<T> deleted = add_fifo_in(page_t<T>{slow_get_page(req), req, Qname::FIFO_IN});
+        if (deleted.name != Qname::NOT_ALLOC) {
+            add_fifo_out(deleted.key);
+        }
+    } else {
+        //in fifo_out, load page then add to lru
+        ListIt_addr key = hit_addr->second;
+        fifo_out.delete_iter(key);
+        hash_addr.erase(*key);
+
+        add_lru(page_t<T>{slow_get_page(req), req, Qname::LRU});
+    }
+    }
+    
+    
     bool add_req(keyT req, T(*slow_get_page)(keyT)) {
 
 #ifdef DEBUG
@@ -170,43 +229,12 @@ template <typename T, typename keyT = int> struct cache_t {
         lru.dump(dump_page);
         std::cout << std::endl;
 #endif
-        if (fifo_mode) return add_fifo(req, slow_get_page);        
+        if (fifo_mode) return add_fifo_mode(req, slow_get_page);        
         
         auto hit = hash_general.find(req);
         if (hit == hash_general.end()) {
             //not in fifo_in and lru
-            auto hit_addr = hash_addr.find(req);
-            if (hit_addr == hash_addr.end()){
-                //not in fifo_out adding to fifo_in
-                if (fifo_in.full()) {
-                    page_t<T> page = fifo_in.pop_end();
-                    hash_general.erase(page.key);
-                    page.name = Qname::NOT_ALLOC;
-
-                    if (fifo_out.full()) {
-                        hash_addr.erase(*(fifo_out.get_last()));
-                        fifo_out.pop_end();
-                    }
-                    fifo_out.push_start(page.key);
-                    hash_addr[page.key] = fifo_out.get_first();
-                }
-                page_t<T> to_add(slow_get_page(req), req, Qname::FIFO_IN);
-                fifo_in.push_start(to_add);
-                hash_general[req] = fifo_in.get_first();
-            } else {
-                //in fifo_out, load page then add to lru
-                ListIt_addr key = hit_addr->second;
-                fifo_out.delete_iter(key);
-                hash_addr.erase(*key);
-
-                if (lru.full()){ 
-                    keyT deleted_key = (lru.pop_end()).key;
-                    hash_general.erase(deleted_key);
-                }
-                page_t<T> to_add(slow_get_page(req), req, Qname::LRU);
-                lru.push_start(to_add);
-                hash_general[req] = lru.get_first();
-            }
+            add_not_stored(req, slow_get_page);
             return false;
         } else {
             //in fifo_in or lru

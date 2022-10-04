@@ -1,6 +1,7 @@
 #pragma once
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <iostream>
 #include <list>
 #include <cstdlib>
 #include "cache_2q.hpp"
@@ -41,7 +42,7 @@ TEST_F(q2_test, full_test) {
 }
 
 TEST_F(q2_test, addition_test) {
-    bool res = cache->add_fifo(3, get_page);
+    bool res = cache->add_fifo_mode(3, get_page);
     EXPECT_EQ(res, false);
     ASSERT_EQ(cache->fifo_in.cur_size, 1);
 }
